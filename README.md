@@ -36,7 +36,7 @@ graph TD
 **How we used it:** WebScout's **Discovery Agent** heavily relies on Apify to scrape real-time job boards, grant pages (like Gitcoin), bounty networks, and developer portals. We integrated Apify via `_shared/apify.ts` with proper actor management, polling for completion, and error handling. The agent dynamically fetches opportunities from multiple sources, normalizes the data, removes duplicates, and saves them to Supabase for further processing by the Matching and Action agents.
 
 ### 2. Zynd AI (ZNS)
-**How we used it:** Our multi-agent system uses Zynd's Name Service (ZNS) principles. The Orchestrator does not hardcode agent endpoints but dynamically resolves them (e.g., `webscout.discovery`, `webscout.action`) through the `_shared/zynd.ts` module, enabling a decentralized, collaborative agent network.
+**How we used it:** Our multi-agent system uses Zynd's Name Service (ZNS) for decentralized agent discovery and registration. Each agent registers itself on the Zynd network upon startup and resolves other agents' endpoints through ZNS, enabling a truly decentralized, collaborative agent network without hardcoded endpoints. We implemented agent registration, endpoint resolution, and service-to-service communication via the Zynd SDK principles in `_shared/zynd.ts`.
 
 ### 3. Superplane
 **How we used it:** We implemented Superplane as our control plane for full auditability. Every action taken by any agent (e.g., "scraping_started", "matching_opportunities") is logged locally in Supabase and asynchronously transmitted to Superplane via the `_shared/superplane.ts` integration. This provides a clear audit trail of agent decisions.

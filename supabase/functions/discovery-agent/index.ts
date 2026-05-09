@@ -2,11 +2,32 @@ import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { supabase } from "../_shared/supabase.ts";
 import { runApifyActor } from "../_shared/apify.ts";
 import { logToSuperplane } from "../_shared/superplane.ts";
+import { registerAgentOnZNS } from "../_shared/zynd.ts";
 
 const SYSTEM_PROMPT = `
 You are the Discovery Agent for WebScout.
 Your job is to interface with data sources (e.g., Apify actors) to find the latest Web3 grants, bounties, and hackathons.
 `;
+
+// Register this agent on Zynd network when the function starts
+// In a production environment, you might want to do this less frequently
+// to avoid excessive registration attempts
+(async () => {
+  try {
+    await registerAgentOnZNS({
+      agent_name: "webscout.discovery",
+      endpoint_url: `${Deno.env.get("SUPABASE_URL")}/functions/v1/discovery-agent`,
+      description: "Discovers Web3 opportunities using Apify actors",
+      metadata: {
+        capabilities: ["web-scraping", "opportunity-discovery"],
+        supported_ecosystems: ["EVM", "Starknet", "Polkadot"]
+      }
+    });
+  } catch (regError) {
+    console.warn("[Discovery Agent] Failed to register on Zynd network:", regError);
+    // Continue anyway - registration is nice to have but not critical for operation
+  }
+})();
 
 serve(async (req) => {
   try {
