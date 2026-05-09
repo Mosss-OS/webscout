@@ -67,12 +67,34 @@ npx supabase start
 
 ### 2. Environment Variables
 Copy `.env.example` to `.env` and fill in your keys:
+
 ```env
-TELEGRAM_BOT_TOKEN=your_bot_token
-APIFY_API_TOKEN=your_apify_token
-ZYND_API_KEY=your_zynd_token
-SUPERPLANE_API_KEY=your_superplane_token
+# Supabase (provided automatically when running supabase start)
+SUPABASE_URL=http://127.0.0.1:54321
+SUPABASE_ANON_KEY=your-local-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-local-service-role-key
+
+# Required for Telegram Bot
+TELEGRAM_BOT_TOKEN=your_telegram_bot_token_from_BotFather
+
+# Required for AI Model Provider (choose at least one)
+OPENAI_API_KEY=your_openai_api_key
+# or
+GROQ_API_KEY=your_groq_api_key
+# or
+ANTHROPIC_API_KEY=your_anthropic_api_key
+
+# Required for Apify Integration (Discovery Agent)
+APIFY_API_TOKEN=your_apify_api_token
+
+# Required for Zynd AI Integration (Multi-Agent System)
+ZYND_API_KEY=your_zynd_api_key
+
+# Required for Superplane Integration (Control Plane & Audit Trail)
+SUPERPLANE_API_KEY=your_superplane_api_key
 ```
+
+> **Note**: All these variables are accessed in the Deno Edge Functions via `Deno.env.get()`. Missing required variables will cause functions to fail at startup.
 
 ### 3. Run Edge Functions
 ```bash

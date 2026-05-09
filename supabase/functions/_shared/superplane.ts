@@ -1,6 +1,6 @@
 import { supabase } from "./supabase.ts";
 
-const SUPERPLANE_API_KEY = Deno.env.get("SUPERPLANE_API_KEY") || "";
+const SUPERPLANE_API_KEY = Deno.env.get("SUPERPLANE_API_KEY");
 
 export async function logToSuperplane(agentName: string, userId: string | null, action: string, details: any) {
   // 1. Log locally to our Supabase database for audit trails
@@ -11,9 +11,10 @@ export async function logToSuperplane(agentName: string, userId: string | null, 
     details: details
   });
 
-  // 2. Transmit event to Superplane Control Plane
+  // 2. Transmit event to Superplane Control Plane (if configured)
   if (!SUPERPLANE_API_KEY) {
-    console.warn(`[Superplane] No API key provided, skipped sending event: ${action}`);
+    // Superplane is optional but recommended for production
+    console.info(`[Superplane] No API key provided, logging locally only for action: ${action}`);
     return;
   }
 
@@ -35,5 +36,6 @@ export async function logToSuperplane(agentName: string, userId: string | null, 
     });
   } catch (err) {
     console.error("[Superplane] Failed to send event:", err);
+    // Don't throw here as we want the local logging to succeed even if Superplane fails
   }
 }

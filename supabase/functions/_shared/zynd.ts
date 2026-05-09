@@ -1,7 +1,12 @@
 // Mock integration for Zynd AI Network (ZNS)
 // In a real hackathon project, this would use the official Zynd SDK to register and resolve agent addresses.
 
-const ZYND_API_KEY = Deno.env.get("ZYND_API_KEY") || "";
+const ZYND_API_KEY = Deno.env.get("ZYND_API_KEY");
+
+// Validate that ZYND_API_KEY is set (though it might be optional in some mock implementations)
+if (!ZYND_API_KEY) {
+  console.warn("[Zynd AI] ZYND_API_KEY is not set - using mock/local mode");
+}
 
 interface ZNSAgentRecord {
   agent_name: string;

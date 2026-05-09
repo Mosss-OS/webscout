@@ -1,11 +1,11 @@
-const APIFY_API_TOKEN = Deno.env.get("APIFY_API_TOKEN") || "";
+// Validate required environment variables
+const APIFY_API_TOKEN = Deno.env.get("APIFY_API_TOKEN");
+
+if (!APIFY_API_TOKEN) {
+  throw new Error("APIFY_API_TOKEN is not set");
+}
 
 export async function runApifyActor(actorId: string, input: any) {
-  if (!APIFY_API_TOKEN) {
-    console.warn("[Apify] No API token provided, returning mocked data.");
-    return [{ title: "Mocked Web3 Job", source: actorId, payout: "TBD" }];
-  }
-
   // Example: Start an Apify actor and wait for dataset results
   const response = await fetch(`https://api.apify.com/v2/acts/${actorId}/runs?token=${APIFY_API_TOKEN}`, {
     method: "POST",

@@ -1,9 +1,15 @@
 import { Bot, Context, session, InlineKeyboard } from "https://deno.land/x/grammy@v1.30.0/mod.ts";
 import { supabase } from "../_shared/supabase.ts";
 
-const botToken = Deno.env.get("TELEGRAM_BOT_TOKEN");
-if (!botToken) throw new Error("TELEGRAM_BOT_TOKEN is not set");
+// Validate required environment variables
+const requiredEnvVars = ["TELEGRAM_BOT_TOKEN", "SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY"];
+for (const varName of requiredEnvVars) {
+  if (!Deno.env.get(varName)) {
+    throw new Error(`${varName} is not set`);
+  }
+}
 
+const botToken = Deno.env.get("TELEGRAM_BOT_TOKEN");
 export const bot = new Bot(botToken);
 
 // Error handler
@@ -88,7 +94,27 @@ bot.command("scout", async (ctx) => {
     { parse_mode: "MarkdownV2", reply_markup: keyboard }
   );
 
-  // Here we would typically invoke the orchestrator or discovery agent via API or Supabase queue
+  // Invoke the Orchestrator Agent
+  try {
+    // @ts-ignore
+    const user = ctx.dbUser;
+    // We would typically dispatch this asynchronously, but for demo we can fire and forget
+    // using the zynd discovery mechanism or direct function invocation.
+    fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/agent-orchestrator`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}`
+      },
+      body: JSON.stringify({
+        userId: user?.id,
+        query: "Find the latest web3 opportunities",
+        action: "scout"
+      })
+    }).catch(console.error);
+  } catch (error) {
+    console.error("Failed to invoke orchestrator:", error);
+  }
 });
 
 // Inline Query Callbacks
