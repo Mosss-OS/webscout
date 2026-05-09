@@ -102,6 +102,49 @@ WebScout uses a four-agent architecture with clear separation of concerns:
 - **Session-based Linking**: Users link wallets via the Telegram bot with interactive prompts
 - **IPFS Storage**: Generated application drafts are optionally saved to IPFS when a wallet is linked
 
+## Deployment
+
+### Production Deployment
+Deploy all services to Supabase:
+```bash
+# 1. One-command deployment
+./scripts/deploy.sh
+
+# Or manually:
+# 2. Link your Supabase project
+npx supabase link --project-ref your-project-ref
+
+# 3. Push database migrations
+npx supabase db push
+
+# 4. Set secrets
+npx supabase secrets set TELEGRAM_BOT_TOKEN=your_token
+npx supabase secrets set APIFY_API_TOKEN=your_token
+npx supabase secrets set OPENAI_API_KEY=your_key
+
+# 5. Deploy all functions
+for fn in telegram-bot agent-orchestrator discovery-agent matching-agent action-agent scheduled-digest; do
+  npx supabase functions deploy "$fn" --no-verify-jwt
+done
+
+# 6. Configure Telegram webhook
+curl "https://api.telegram.org/bot<TELEGRAM_BOT_TOKEN>/setWebhook?url=https://<PROJECT>.supabase.co/functions/v1/telegram-bot"
+```
+
+### GitHub Actions CI/CD
+The repository includes a CI/CD pipeline in `.github/workflows/deploy.yml`. To use it:
+
+1. Add these secrets to your GitHub repository:
+   - `SUPABASE_ACCESS_TOKEN` - from [Supabase Access Tokens](https://supabase.com/dashboard/account/tokens)
+   - `SUPABASE_DB_PASSWORD` - your Supabase database password
+   - `TELEGRAM_BOT_TOKEN` - from BotFather
+   - `APIFY_API_TOKEN`, `ZYND_API_KEY`, `SUPERPLANE_API_KEY`, `OPENAI_API_KEY` - as needed
+   - `FUNCTION_SECRET` - random string for webhook authentication
+
+2. Set the repository variable: `SUPABASE_PROJECT_ID`
+
+3. Push to `main` to trigger automatic deployment.
+
 ## Setup & Deployment Instructions
 
 ### Prerequisites

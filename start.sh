@@ -1,41 +1,51 @@
 #!/bin/bash
+set -euo pipefail
 
-# WebScout Startup Script
-# This script will start both the Supabase backend (including Edge Functions)
-# and the Next.js frontend dashboard.
+echo "🚀 WebScout - Local Development"
+echo "================================"
 
-echo "🚀 Starting WebScout..."
-
-# Ensure we are in the project root
 if [ ! -d "supabase" ]; then
-    echo "❌ Error: Please run this script from the root of the webscout project directory."
-    exit 1
+  echo "❌ Run this from the project root."
+  exit 1
 fi
 
-# Step 1: Start Supabase (Database, Auth, Edge Functions)
+if [ ! -f ".env" ]; then
+  echo "⚠️  .env not found. Copying .env.example..."
+  cp .env.example .env
+  echo "   Edit .env with your API keys before running the bot."
+fi
+
+cleanup() {
+  echo ""
+  echo "🛑 Shutting down..."
+  kill $SUPABASE_PID 2>/dev/null || true
+  kill $NEXTJS_PID 2>/dev/null || true
+  npx supabase stop 2>/dev/null || true
+  exit 0
+}
+trap cleanup SIGINT SIGTERM
+
 echo "📦 Starting Supabase..."
 npx supabase start
+SUPABASE_PID=$!
+echo "   ✅ Supabase running (Studio: http://localhost:54323)"
 
-# Note: The telegram-bot webhook needs to be served publicly for Telegram to reach it.
-# For local testing, you typically run: npx supabase functions serve telegram-bot --env-file .env
-# We'll run the function server in the background
-echo "🤖 Serving Telegram Bot Edge Function locally..."
+echo "🤖 Serving Telegram Bot Edge Function..."
 npx supabase functions serve telegram-bot --env-file .env --no-verify-jwt > supabase_function.log 2>&1 &
 SUPABASE_PID=$!
 
-# Step 2: Start Next.js Dashboard
 echo "🌐 Starting Next.js Dashboard..."
 cd dashboard
 npm run dev &
 NEXTJS_PID=$!
+cd ..
 
-echo "✅ WebScout is running!"
-echo "- Dashboard: http://localhost:3000"
-echo "- Supabase Studio: http://localhost:54323"
+echo ""
+echo "✅ All services running:"
+echo "   📊 Dashboard:    http://localhost:3000"
+echo "   🗄  Supabase:     http://localhost:54323"
+echo "   🤖 Bot Function: http://localhost:54321/functions/v1/telegram-bot"
+echo ""
 echo "Press [CTRL+C] to stop all services."
 
-# Trap CTRL+C and kill background processes
-trap "echo 'Stopping services...'; kill $SUPABASE_PID; kill $NEXTJS_PID; npx supabase stop; exit" SIGINT
-
-# Keep script running to maintain the background processes
 wait
