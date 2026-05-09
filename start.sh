@@ -19,6 +19,7 @@ cleanup() {
   echo ""
   echo "🛑 Shutting down..."
   kill $SUPABASE_PID 2>/dev/null || true
+  kill $BOT_PID 2>/dev/null || true
   kill $NEXTJS_PID 2>/dev/null || true
   npx supabase stop 2>/dev/null || true
   exit 0
@@ -32,7 +33,7 @@ echo "   ✅ Supabase running (Studio: http://localhost:54323)"
 
 echo "🤖 Serving Telegram Bot Edge Function..."
 npx supabase functions serve telegram-bot --env-file .env --no-verify-jwt > supabase_function.log 2>&1 &
-SUPABASE_PID=$!
+BOT_PID=$!
 
 echo "🌐 Starting Next.js Dashboard..."
 cd dashboard
