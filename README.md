@@ -39,7 +39,7 @@ graph TD
 **How we used it:** Our multi-agent system uses Zynd's Name Service (ZNS) for decentralized agent discovery and registration. Each agent registers itself on the Zynd network upon startup and resolves other agents' endpoints through ZNS, enabling a truly decentralized, collaborative agent network without hardcoded endpoints. We implemented agent registration, endpoint resolution, and service-to-service communication via the Zynd SDK principles in `_shared/zynd.ts`.
 
 ### 3. Superplane
-**How we used it:** We implemented Superplane as our control plane for full auditability. Every action taken by any agent (e.g., "scraping_started", "matching_opportunities") is logged locally in Supabase and asynchronously transmitted to Superplane via the `_shared/superplane.ts` integration. This provides a clear audit trail of agent decisions.
+**How we used it:** We implemented Superplane as our control plane for full auditability and workflow automation. Every action taken by any agent is logged locally in Supabase and asynchronously transmitted to Superplane via the `_shared/superplane.ts` integration. This provides a clear audit trail of agent decisions and enables advanced features like event-driven alerts, scheduled opportunity digests, and guardrails/safety policies. The integration handles connection failures gracefully, ensuring local logging continues even if Superplane is temporarily unavailable.
 
 ### 4. GitHub Copilot
 **How we used it:** GitHub Copilot was a massive accelerant during development. It helped generate:
