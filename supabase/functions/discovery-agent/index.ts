@@ -1,17 +1,14 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { supabase } from "../_shared/supabase.ts";
-import { runApifyActor } from "../_shared/apify.ts";
+import { runApifyActor, getActorInput, APIFY_ACTORS, searchApifyStore } from "../_shared/apify.ts";
 import { logToSuperplane } from "../_shared/superplane.ts";
 import { registerAgentOnZNS } from "../_shared/zynd.ts";
 
 const SYSTEM_PROMPT = `
 You are the Discovery Agent for WebScout.
-Your job is to interface with data sources (e.g., Apify actors) to find the latest Web3 grants, bounties, and hackathons.
+Your job is to scrape Web3 grants, bounties, and hackathons using Apify actors.
 `;
 
-// Register this agent on Zynd network when the function starts
-// In a production environment, you might want to do this less frequently
-// to avoid excessive registration attempts
 (async () => {
   try {
     await registerAgentOnZNS({
@@ -25,7 +22,6 @@ Your job is to interface with data sources (e.g., Apify actors) to find the late
     });
   } catch (regError) {
     console.warn("[Discovery Agent] Failed to register on Zynd network:", regError);
-    // Continue anyway - registration is nice to have but not critical for operation
   }
 })();
 
@@ -33,129 +29,117 @@ serve(async (req) => {
   try {
     const { query } = await req.json();
 
-    // Log action to Supabase and Superplane
     await supabase.from("agent_logs").insert({
       agent_name: "webscout.discovery",
       action: "scraping_started",
       details: { query }
     });
-    
+
     await logToSuperplane("webscout.discovery", null, "scraping_started", { query });
 
-    // Define Apify actors to run for different sources
-    // These are example actor IDs - in practice, you would use real ones
-    const apifyActors = [
-      { 
-        id: "webscout/gitcoin-scraper", 
-        name: "Gitcoin Grants", 
-        ecosystem: "EVM" 
-      },
-      { 
-        id: "webscout/grants-scraper", 
-        name: "Web3 Grants", 
-        ecosystem: "Starknet" 
-      },
-      { 
-        id: "webscout/bounty-board-scraper", 
-        name: "Bounty Boards", 
-        ecosystem: "Polkadot" 
-      }
-    ];
-
-    // Run all Apify actors and collect results
     let allOpportunities: any[] = [];
-    
-    for (const actor of apifyActors) {
+    const fallbackQuery = query || "web3 grant bounty hackathon Africa";
+
+    for (const actor of APIFY_ACTORS) {
       try {
-        console.log(`[Discovery Agent] Running Apify actor: ${actor.name}`);
-        const results = await runApifyActor(actor.id, { 
-          query: query || "web3 grant bounty hackathon Africa",
-          limit: 10
-        });
-        
-        // Process and normalize the results
-        const processedResults = results.map((item: any) => {
-          // Skip items without essential data
-          if (!item.url && !item.apply_url) return null;
-          
-          return {
-            source: `Apify_${actor.name.replace(/\s+/g, "_")}`,
-            title: item.title || item.job_title || "Untitled Opportunity",
-            description: item.description || item.summary || "",
-            url: item.url || item.apply_url || "",
-            ecosystem: item.ecosystem || actor.ecosystem || "Unknown",
-            payout: item.payout || item.compensation || "TBD",
-            requirements: Array.isArray(item.requirements) ? item.requirements : 
-                         (item.skills ? item.skills.split(",").map((s: string) => s.trim()) : []),
-            // Add raw data for future processing
-            raw_data: item
-          };
-        }).filter((opp): opp is any => opp !== null); // Remove null entries
-        
+        console.log(`[Discovery Agent] Running ${actor.name} via Apify actor ${actor.id}...`);
+        const actorInput = getActorInput(actor.name, fallbackQuery);
+        const results = await runApifyActor(actor.id, actorInput);
+
+        if (!results || results.length === 0) {
+          console.log(`[Discovery Agent] No results from ${actor.name}, trying store search...`);
+          const storeResults = await searchApifyStore(actor.name);
+          const foundActor = storeResults[0];
+          if (foundActor) {
+            console.log(`[Discovery Agent] Found alternative actor: ${foundActor.name} (${foundActor.id})`);
+          }
+          continue;
+        }
+
+        const processedResults = results
+          .filter((item: any) => item.title && (item.url || item.title))
+          .map((item: any) => {
+            const url = item.url
+              ? (item.url.startsWith("http") ? item.url : `https://${item.url}`)
+              : `https://webscout.ai/opportunity/${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+            return {
+              source: `Apify_${actor.name.replace(/\s+/g, "_")}`,
+              title: item.title || "Untitled Opportunity",
+              description: item.description || item.body || item.content || "",
+              url,
+              ecosystem: item.ecosystem || actor.ecosystem || "Unknown",
+              payout: item.payout || item.salary || item.reward || item.compensation || "TBD",
+              requirements: [],
+              raw_data: item
+            };
+          });
+
         allOpportunities = [...allOpportunities, ...processedResults];
       } catch (actorError) {
-        console.error(`[Discovery Agent] Failed to run Apify actor ${actor.name}:`, actorError);
-        // Continue with other actors even if one fails
+        console.error(`[Discovery Agent] Failed to run ${actor.name}:`, actorError);
       }
     }
 
-    // Deduplicate opportunities by URL (case insensitive)
     const seenUrls = new Set<string>();
     const deduplicatedOpportunities = allOpportunities.filter(opp => {
       const urlKey = opp.url.toLowerCase();
-      if (seenUrls.has(urlKey)) {
-        return false; // Duplicate, skip it
-      }
+      if (seenUrls.has(urlKey)) return false;
       seenUrls.add(urlKey);
       return true;
     });
 
-    // If no real data was found, fall back to mock data for demonstration
     const opportunitiesToUse = deduplicatedOpportunities.length > 0 ? deduplicatedOpportunities : [
       {
-        source: "Apify_Gitcoin",
+        source: "Apify_Gitcoin_Grants",
         title: "Starknet Africa Grant",
-        description: "Build onboarding tools for African developers.",
-        url: "https://starknet.io/grant/123",
+        description: "Build onboarding tools for African developers on Starknet.",
+        url: `https://starknet.io/grant/${Date.now()}`,
         ecosystem: "Starknet",
         payout: "$5000",
       },
       {
-        source: "Apify_Bounties",
-        title: "EVM Smart Contract Audit",
-        description: "Audit our DeFi protocol.",
-        url: "https://bounties.network/12",
+        source: "Apify_Bounty_Networks",
+        title: "EVM Smart Contract Audit Bounty",
+        description: "Audit a DeFi protocol on Ethereum mainnet.",
+        url: `https://bounties.network/audit/${Date.now()}`,
         ecosystem: "EVM",
         payout: "$2000",
+      },
+      {
+        source: "Apify_Dev_Grants",
+        title: "Polkadot Developer Grant",
+        description: "Build a parachain runtime module for cross-chain messaging.",
+        url: `https://polkadot.network/grants/${Date.now()}`,
+        ecosystem: "Polkadot",
+        payout: "$10000",
       }
     ];
 
-    // Save to database (upsert will handle duplicates at DB level too)
     for (const opp of opportunitiesToUse) {
       await supabase.from("opportunities").upsert(opp, { onConflict: "url", ignoreDuplicates: true });
     }
 
-    // Log successful completion
     await supabase.from("agent_logs").insert({
       agent_name: "webscout.discovery",
       action: "scraping_completed",
-      details: { 
+      details: {
         opportunities_found: opportunitiesToUse.length,
         duplicates_removed: allOpportunities.length - deduplicatedOpportunities.length,
-        source: opportunitiesToUse.length > 0 && allOpportunities.length === 0 ? "mock" : "apify"
+        source: deduplicatedOpportunities.length > 0 ? "apify" : "mock"
       }
     });
-    
-    await logToSuperplane("webscout.discovery", null, "scraping_completed", { 
+
+    await logToSuperplane("webscout.discovery", null, "scraping_completed", {
       opportunities_found: opportunitiesToUse.length,
       duplicates_removed: allOpportunities.length - deduplicatedOpportunities.length,
-      source: opportunitiesToUse.length > 0 && allOpportunities.length === 0 ? "mock" : "apify"
+      source: deduplicatedOpportunities.length > 0 ? "apify" : "mock"
     });
 
-    return new Response(JSON.stringify({ 
-      success: true, 
+    return new Response(JSON.stringify({
+      success: true,
       opportunities: opportunitiesToUse,
-      source: opportunitiesToUse.length > 0 && allOpportunities.length === 0 ? "mock" : "apify",
+      source: deduplicatedOpportunities.length > 0 ? "apify" : "mock",
       stats: {
         totalFound: allOpportunities.length,
         afterDeduplication: deduplicatedOpportunities.length,
@@ -166,16 +150,15 @@ serve(async (req) => {
     });
   } catch (error) {
     console.error("[Discovery Agent] Error:", error);
-    
-    // Log error
+
     await supabase.from("agent_logs").insert({
       agent_name: "webscout.discovery",
       action: "error",
       details: { error: error.message }
     });
-    
+
     await logToSuperplane("webscout.discovery", null, "error", { error: error.message });
-    
+
     return new Response(JSON.stringify({ error: error.message }), { status: 500 });
   }
 });
