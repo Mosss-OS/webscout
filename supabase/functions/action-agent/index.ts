@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { supabase } from "../_shared/supabase.ts";
-import { logToSuperplane } from "../_shared/superplane.ts";
+import { logToSuperplane, checkGuardrails } from "../_shared/superplane.ts";
 import { registerAgentOnZNS } from "../_shared/zynd.ts";
 import { saveDraftToIPFS } from "../_shared/web3.ts";
 import { rateLimitMiddleware } from "../_shared/rate-limiter.ts";
@@ -34,6 +34,26 @@ serve(rateLimitMiddleware(async (req) => {
 
     const { data: user } = await supabase.from("users").select("*").eq("id", userId).single();
     const { data: opportunity } = await supabase.from("opportunities").select("*").eq("id", opportunityId).single();
+
+    const guardrail = await checkGuardrails({
+      agentName: "webscout.action",
+      userId,
+      action: "generate_draft",
+      input: { opportunityId, opportunityTitle: opportunity?.title }
+    });
+
+    if (!guardrail.passed) {
+      await supabase.from("agent_logs").insert({
+        agent_name: "webscout.action",
+        user_id: userId,
+        action: "guardrail_blocked",
+        details: { opportunity_id: opportunityId, reason: guardrail.reason }
+      });
+      return new Response(JSON.stringify({
+        success: false,
+        error: `Action blocked by guardrail: ${guardrail.reason}`
+      }), { status: 403 });
+    }
 
     // Log action to Supabase and Superplane
     await supabase.from("agent_logs").insert({
