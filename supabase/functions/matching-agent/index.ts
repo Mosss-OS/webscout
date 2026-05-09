@@ -17,7 +17,7 @@ Prioritize opportunities relevant to African builders.
       endpoint_url: `${Deno.env.get("SUPABASE_URL")}/functions/v1/matching-agent`,
       description: "Matches Web3 opportunities to user skills and preferences",
       metadata: {
-        capabilities": ["skill-matching", "opportunity-scoring", "africa-focused"],
+        capabilities: ["skill-matching", "opportunity-scoring", "africa-focused"],
         supported_ecosystems: ["EVM", "Starknet", "Polkadot", "Stellar"]
       }
     });

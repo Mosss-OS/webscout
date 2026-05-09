@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { supabase } from "../_shared/supabase.ts";
 import { logToSuperplane } from "../_shared/superplane.ts";
 import { registerAgentOnZNS } from "../_shared/zynd.ts";
+import { saveDraftToIPFS } from "../_shared/web3.ts";
 
 const SYSTEM_PROMPT = `
 You are the Action Agent for WebScout.
@@ -16,7 +17,7 @@ Your job is to take a validated opportunity and a user's profile to generate per
       endpoint_url: `${Deno.env.get("SUPABASE_URL")}/functions/v1/action-agent`,
       description: "Generates personalized application drafts and outreach messages for Web3 opportunities",
       metadata: {
-        capabilities": ["application-writing", "outreach-messaging", "proposal-generation"],
+        capabilities: ["application-writing", "outreach-messaging", "proposal-generation"],
         supported_ecosystems: ["EVM", "Starknet", "Polkadot", "Stellar"]
       }
     });
@@ -79,13 +80,32 @@ serve(async (req) => {
       generatedDraft = `Hello,\n\nI am a Web3 builder from ${user?.location_preference || "Africa"} with skills in ${(user?.skills || []).join(", ")}. I am very interested in the ${opportunity?.title} opportunity.\n\nHere is my proposal...`;
     }
 
-    // Save the draft
+    // Save the draft to database
     await supabase.from("saved_opportunities").upsert({
       user_id: userId,
       opportunity_id: opportunityId,
       status: "drafted",
       draft_content: generatedDraft
     }, { onConflict: "user_id, opportunity_id" });
+
+    // Save draft to IPFS if user has a wallet address
+    let ipfsCid: string | null = null;
+    if (user?.wallet_address) {
+      try {
+        ipfsCid = await saveDraftToIPFS(generatedDraft);
+        if (ipfsCid) {
+          await supabase.from("agent_logs").insert({
+            agent_name: "webscout.action",
+            user_id: userId,
+            action: "draft_saved_to_ipfs",
+            details: { opportunity_id: opportunityId, ipfs_cid: ipfsCid }
+          });
+        }
+      } catch (ipfsError) {
+        console.error("[Action Agent] Failed to save draft to IPFS:", ipfsError);
+        // Don't fail the whole request if IPFS fails
+      }
+    }
 
     // Log successful completion
     await supabase.from("agent_logs").insert({
@@ -94,16 +114,22 @@ serve(async (req) => {
       action: "draft_generated",
       details: { 
         opportunity_id: opportunityId,
-        draft_length: generatedDraft.length
+        draft_length: generatedDraft.length,
+        saved_to_ipfs: !!ipfsCid
       }
     });
     
     await logToSuperplane("webscout.action", userId, "draft_generated", { 
       opportunity_id: opportunityId,
-      draft_length: generatedDraft.length
+      draft_length: generatedDraft.length,
+      saved_to_ipfs: !!ipfsCid
     });
 
-    return new Response(JSON.stringify({ success: true, draft: generatedDraft }), {
+    return new Response(JSON.stringify({ 
+      success: true, 
+      draft: generatedDraft,
+      ipfs_cid: ipfsCid
+    }), {
       headers: { "Content-Type": "application/json" },
     });
   } catch (error) {

@@ -19,7 +19,7 @@ If they want to apply, call Action.
       endpoint_url: `${Deno.env.get("SUPABASE_URL")}/functions/v1/agent-orchestrator`,
       description: "Orchestrates the WebScout multi-agent system, routing user requests to appropriate agents",
       metadata: {
-        capabilities": ["intent-parsing", "agent-coordination", "workflow-management"],
+        capabilities: ["intent-parsing", "agent-coordination", "workflow-management"],
         supported_ecosystems: ["EVM", "Starknet", "Polkadot", "Stellar"]
       }
     });
