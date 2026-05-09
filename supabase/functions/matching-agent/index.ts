@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { supabase } from "../_shared/supabase.ts";
 import { logToSuperplane } from "../_shared/superplane.ts";
 import { registerAgentOnZNS } from "../_shared/zynd.ts";
+import { rateLimitMiddleware } from "../_shared/rate-limiter.ts";
 
 const SYSTEM_PROMPT = `
 You are the Matching & Valuation Agent for WebScout.
@@ -27,7 +28,7 @@ Prioritize opportunities relevant to African builders.
   }
 })();
 
-serve(async (req) => {
+serve(rateLimitMiddleware(async (req) => {
   try {
     const { userId, opportunities } = await req.json();
 
@@ -90,4 +91,4 @@ serve(async (req) => {
     
     return new Response(JSON.stringify({ error: error.message }), { status: 500 });
   }
-});
+}));

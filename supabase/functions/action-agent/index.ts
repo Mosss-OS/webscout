@@ -3,6 +3,7 @@ import { supabase } from "../_shared/supabase.ts";
 import { logToSuperplane } from "../_shared/superplane.ts";
 import { registerAgentOnZNS } from "../_shared/zynd.ts";
 import { saveDraftToIPFS } from "../_shared/web3.ts";
+import { rateLimitMiddleware } from "../_shared/rate-limiter.ts";
 
 const SYSTEM_PROMPT = `
 You are the Action Agent for WebScout.
@@ -27,7 +28,7 @@ Your job is to take a validated opportunity and a user's profile to generate per
   }
 })();
 
-serve(async (req) => {
+serve(rateLimitMiddleware(async (req) => {
   try {
     const { userId, opportunityId } = await req.json();
 
@@ -147,4 +148,4 @@ serve(async (req) => {
     
     return new Response(JSON.stringify({ error: error.message }), { status: 500 });
   }
-});
+}));

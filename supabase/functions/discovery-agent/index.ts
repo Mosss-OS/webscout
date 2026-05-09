@@ -3,6 +3,7 @@ import { supabase } from "../_shared/supabase.ts";
 import { runApifyActor, getActorInput, APIFY_ACTORS, searchApifyStore } from "../_shared/apify.ts";
 import { logToSuperplane } from "../_shared/superplane.ts";
 import { registerAgentOnZNS } from "../_shared/zynd.ts";
+import { rateLimitMiddleware } from "../_shared/rate-limiter.ts";
 
 const SYSTEM_PROMPT = `
 You are the Discovery Agent for WebScout.
@@ -25,7 +26,7 @@ Your job is to scrape Web3 grants, bounties, and hackathons using Apify actors.
   }
 })();
 
-serve(async (req) => {
+serve(rateLimitMiddleware(async (req) => {
   try {
     const { query } = await req.json();
 
@@ -161,4 +162,4 @@ serve(async (req) => {
 
     return new Response(JSON.stringify({ error: error.message }), { status: 500 });
   }
-});
+}));
