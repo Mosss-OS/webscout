@@ -33,7 +33,7 @@ graph TD
 ## 🛠 Sponsor Integrations
 
 ### 1. Apify
-**How we used it:** WebScout's **Discovery Agent** heavily relies on Apify to scrape real-time job boards, grant pages (like Gitcoin), and bounty networks. By integrating Apify via `_shared/apify.ts`, the agent dynamically fetches and normalizes opportunities before saving them to Supabase.
+**How we used it:** WebScout's **Discovery Agent** heavily relies on Apify to scrape real-time job boards, grant pages (like Gitcoin), bounty networks, and developer portals. We integrated Apify via `_shared/apify.ts` with proper actor management, polling for completion, and error handling. The agent dynamically fetches opportunities from multiple sources, normalizes the data, removes duplicates, and saves them to Supabase for further processing by the Matching and Action agents.
 
 ### 2. Zynd AI (ZNS)
 **How we used it:** Our multi-agent system uses Zynd's Name Service (ZNS) principles. The Orchestrator does not hardcode agent endpoints but dynamically resolves them (e.g., `webscout.discovery`, `webscout.action`) through the `_shared/zynd.ts` module, enabling a decentralized, collaborative agent network.

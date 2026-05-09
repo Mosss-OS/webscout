@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { callAgent } from "../_shared/zynd.ts";
 import { supabase } from "../_shared/supabase.ts";
+import { logToSuperplane } from "../_shared/superplane.ts";
 
 const SYSTEM_PROMPT = `
 You are the Orchestrator Agent for WebScout. 
@@ -13,13 +14,15 @@ serve(async (req) => {
   try {
     const { userId, query, action } = await req.json();
 
-    // Log action to Superplane (Audit logs)
+    // Log action to Supabase and Superplane (Audit trails)
     await supabase.from("agent_logs").insert({
       agent_name: "webscout.orchestrator",
       user_id: userId,
       action: "received_query",
       details: { query, action }
     });
+    
+    await logToSuperplane("webscout.orchestrator", userId, "received_query", { query, action });
 
     let result = {};
 
@@ -43,7 +46,18 @@ serve(async (req) => {
       headers: { "Content-Type": "application/json" },
     });
   } catch (error) {
-    console.error(error);
+    console.error("[Orchestrator Agent] Error:", error);
+    
+    // Log error to Supabase and Superplane
+    await supabase.from("agent_logs").insert({
+      agent_name: "webscout.orchestrator",
+      user_id: userId,
+      action: "error",
+      details: { error: error.message }
+    });
+    
+    await logToSuperplane("webscout.orchestrator", userId, "error", { error: error.message });
+    
     return new Response(JSON.stringify({ error: error.message }), { status: 500 });
   }
 });

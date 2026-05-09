@@ -21,9 +21,30 @@ serve(async (req) => {
       details: { opportunity_id: opportunityId }
     });
 
-    // In a real hackathon, we would call OpenAI/Groq here using OPENAI_API_KEY
-    // to generate a highly personalized draft based on `user.skills` and `opportunity.description`.
-    const generatedDraft = `Hello,\n\nI am a Web3 builder from ${user?.location_preference || "Africa"} with skills in ${(user?.skills || []).join(", ")}. I am very interested in the ${opportunity?.title} opportunity.\n\nHere is my proposal...`;
+    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+    let generatedDraft = "";
+
+    if (OPENAI_API_KEY) {
+      const response = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${OPENAI_API_KEY}`
+        },
+        body: JSON.stringify({
+          model: "gpt-4o",
+          messages: [
+            { role: "system", content: SYSTEM_PROMPT },
+            { role: "user", content: `Create a personalized application draft for this opportunity: ${opportunity?.title} - ${opportunity?.description}. The user is from ${user?.location_preference || "Africa"} with skills in ${(user?.skills || []).join(", ")}.` }
+          ]
+        })
+      });
+      const aiData = await response.json();
+      generatedDraft = aiData.choices?.[0]?.message?.content || "Failed to generate draft.";
+    } else {
+      // Fallback if no API key is provided
+      generatedDraft = `Hello,\n\nI am a Web3 builder from ${user?.location_preference || "Africa"} with skills in ${(user?.skills || []).join(", ")}. I am very interested in the ${opportunity?.title} opportunity.\n\nHere is my proposal...`;
+    }
 
     // Save the draft
     await supabase.from("saved_opportunities").upsert({
