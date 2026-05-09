@@ -1,0 +1,151 @@
+You are an expert full-stack AI agent developer with deep experience in Supabase, Deno, Telegram bots, and multi-agent systems. Build WebScout, a Telegram-first autonomous AI agent for the Bot-a-thon.
+Goal: Create a truly agentic Telegram bot that helps Web3 builders across Africa (Nigeria, Kenya, South Africa, etc.) discover, evaluate, rank, and act on high-quality opportunities such as freelance gigs, paid bounties, grants, hackathons, and contribution programs in EVM, Starknet/Cairo, Stellar, and Polkadot ecosystems.
+The bot must demonstrate strong integration with Apify (scraping), Zynd AI (multi-agent collaboration), Superplane (workflow orchestration & control plane), and heavy use of GitHub Copilot during development (document this clearly).
+Primary Tech Stack (Supabase-First):
+
+Supabase Postgres (with pgvector for future embeddings)
+Supabase Edge Functions (Deno + TypeScript) — this is the main backend
+grammY framework for Telegram bot
+LangChain.js / LangGraph or Vercel AI SDK for agent orchestration
+Next.js 15 + Tailwind (optional light web dashboard)
+Wallet connection: Wagmi or Starknet.js
+All secrets managed via Supabase secrets
+
+
+PHASE 0: Project Setup & Environment (Do this first)
+
+Initialize a new Supabase project (if not exists).
+Set up local Supabase CLI environment.
+Create the following Supabase Edge Functions:
+telegram-bot (main webhook handler using grammY)
+agent-orchestrator
+discovery-agent
+matching-agent
+action-agent
+
+Create a _shared folder for common utilities.
+Set up required environment variables/secrets:
+TELEGRAM_BOT_TOKEN
+APIFY_API_TOKEN
+ZYND_API_KEY (or relevant credentials)
+SUPERPLANE_API_KEY / webhook URLs
+OpenAI / Groq / Anthropic API key (for LLM)
+Supabase service role key (auto-available)
+
+Create database tables (with proper RLS policies):
+users (telegram_id, wallet_address, skills, preferences, created_at)
+conversations (memory / chat history)
+opportunities (raw & processed)
+agent_logs (for audit trails)
+saved_opportunities (user bookmarks)
+
+
+Provide the full SQL schema and RLS policies.
+
+PHASE 1: Telegram Bot Foundation (Core Chat Interface)
+Build a robust Telegram bot using grammY inside the telegram-bot Edge Function.
+Requirements:
+
+Handle webhook updates correctly with webhookCallback.
+Support natural language messages + commands (/start, /help, /myprofile, /scout).
+Beautiful formatting using MarkdownV2 or HTML.
+Inline keyboards and buttons for actions (Save, Apply Draft, Refresh).
+Conversation memory using Supabase.
+User profile management (skills, location, experience level).
+Typing indicators and thoughtful loading messages.
+
+Deliver clean, production-grade code with proper error handling and logging.
+
+PHASE 2: Database Schema & Supabase Integration
+Design and implement a clean, scalable database schema that supports:
+
+User profiles and preferences
+Persistent agent memory
+Opportunity storage (raw vs processed)
+Audit logs for agent actions (important for Superplane)
+
+Include TypeScript types for all tables.
+Implement Supabase client usage inside Edge Functions (service role where needed).
+
+PHASE 3: Multi-Agent System Architecture
+Implement a true multi-agent system with clear separation of concerns:
+
+Orchestrator Agent — Receives user query, plans, delegates, and aggregates results.
+Discovery Agent — Uses Apify to scrape job boards (LinkedIn, Upwork, Gitcoin, protocol bounty pages, X/Twitter, etc.).
+Matching & Valuation Agent — Scores opportunities based on user skills, location (Africa preference), payout, relevance, and recency.
+Action Agent — Generates personalized application drafts, outreach messages, or next-step recommendations.
+
+Zynd AI Integration:
+
+Register each agent on the Zynd network using ZNS (human-readable names).
+Enable agents to discover each other and collaborate securely (task handoff, message passing, optional micropayments).
+
+Use LangGraph or a clean custom orchestration layer for agent coordination.
+Provide clear, effective system prompts for each agent.
+
+PHASE 4: Tool Integrations (Sponsor Requirements)
+Apify Integration:
+
+Call Apify Actors / API from Edge Functions to scrape real-time data (jobs, bounties, grants).
+At least 3 reliable sources.
+Clean data processing and deduplication.
+
+Superplane Integration:
+
+Use Superplane as the control plane.
+Create workflows for:
+Event-driven alerts (new high-value opportunity → notify user)
+Scheduled daily/weekly opportunity digests
+Guardrails and safety policies
+Full audit trail of agent decisions and actions
+
+
+Web3 Integration:
+
+Wallet connect support (Wagmi / Starknet.js) — preferably via Telegram Mini App or web dashboard.
+Optional: On-chain credential verification or saving opportunities to IPFS.
+
+
+PHASE 5: Optional Web Dashboard (Polish)
+Build a minimal Next.js dashboard (deployed on Vercel) that shows:
+
+User opportunities history
+Saved items
+Analytics
+Beautiful UI with Tailwind
+
+Make it optional but highly recommended for better demo quality.
+
+PHASE 6: Polish, Documentation & Submission Readiness
+
+Heavy GitHub Copilot usage documentation (screenshots or detailed explanation in README — e.g., "Copilot helped generate 65% of agent tool definitions and complex prompts").
+Professional README.md with:
+Project overview and Africa impact
+Architecture diagram (Mermaid)
+Dedicated sections for each sponsor (Apify, Zynd, Superplane, GitHub)
+Setup & deployment instructions
+Demo video script/plan
+
+Clean error handling, rate limiting, and logging.
+Make the bot feel intelligent, responsive, and useful.
+
+
+Final Output Instructions
+Build the project phase by phase in this exact order. After completing each phase, summarize what was built, provide key code files, and ask for confirmation before moving to the next phase.
+Start with Phase 0 (Project Setup & Database Schema). Provide:
+
+Full Supabase database schema (SQL)
+Recommended Edge Function folder structure
+List of all required secrets
+Initial telegram-bot Edge Function skeleton using grammY
+
+Then wait for my approval before proceeding to Phase 1.
+Ensure the entire application is:
+
+Production-grade quality
+Secure (proper secrets handling, RLS)
+Hackathon-judge friendly (clear sponsor integrations, great UX, strong demo potential)
+Focused on real value for African Web3 builders
+
+You have full creative freedom within the constraints above. Prioritize reliability, clean code, and strong demonstration of autonomy + sponsor tools.
+Let's begin.
